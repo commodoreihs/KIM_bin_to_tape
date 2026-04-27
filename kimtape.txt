@@ -1,0 +1,339 @@
+
+; 64tass Turbo Assembler Macro V1.58.2974? listing file
+; 64tass --cbm-prg --list kimtape.txt -o kimtape.prg kimbin2tape.asm
+; Mon Apr 27 16:08:03 2026
+
+;Offset	;Hex		;Monitor	;Source
+
+;******  Processing input file: kimbin2tape.asm
+
+>0401	0b 04				.byte $0B,$04                 ; link to next line ($040B = EOP)
+>0403	0a 00				.byte $0A,$00                 ; line number 10
+>0405	9e				.byte $9E                     ; SYS token
+>0406	31 30 33 37			.text "1037"                  ; SYS argument as ASCII digits
+>040a	00				.byte $00                     ; end of line
+>040b	00 00				.byte $00,$00                 ; end of program
+=$d1					FNLEN_ZP    = $D1             ; length of filename
+=$da					FILENAME_PTR = $DA            ; pointer to filename ($DA-$DB)
+=$d4					DEVNUM      = $D4             ; device number (8 = disk)
+=$9d					LFFLAG      = $9D             ; 0 = LOAD, 1 = VERIFY
+=$96					ST_ZP       = $96             ; KERNAL status byte (clear before call,
+=$f4a5					SEND_NAME   = $F4A5           ; send name to IEEE (BASIC 2: $F466)
+=$f0d2					SEND_TALK   = $F0D2           ; send TALK         (BASIC 2: $F0B6)
+=$f193					SEND_SECOND = $F193           ; send secondary address (BASIC 2: $F128)
+=$f1c0					GET_BYTE    = $F1C0           ; get byte from IEEE (BASIC 2: $F18C)
+=$f3c1					ABORT_FNF   = $F3C1           ; abort, ?FILE NOT FOUND (BASIC 2: $F56E)
+=$f391					REJOIN_LOAD = $F391           ; rejoin LOAD body  (BASIC 2: $F355)
+=$ffd2					CHROUT      = $FFD2
+=$ffe4					GETIN       = $FFE4
+=$fb					IOSTART     = $FB
+=$4000					BUFFER      = $4000
+=$0a00					CHKL        = $0A00           ; checksum low
+=$0a01					CHKH        = $0A01           ; checksum high
+=$0a02					SAVX        = $0A02           ; saved X (and Y at SAVX+1) during OUTCHT
+=$0a05					VEB         = $0A05           ; dynamic LDA target (4 bytes)
+=$0a0a					LOADAL      = $0A0A           ; KIM-side load addr (lo) for tape header
+=$0a0b					LOADAH      = $0A0B
+=$0a0c					ENDAL       = $0A0C           ; one past last byte (lo)
+=$0a0d					ENDAH       = $0A0D
+=$0a0e					FNAMELEN    = $0A0E
+=$0a0f					LINEBUF     = $0A0F           ; filename input buffer
+=16					LINEBUFMAX  = 16              ; CBM filenames max 16 chars
+=$e84b					ACR         = $E84B
+=$e84c					PCR         = $E84C
+=$e84e					IER         = $E84E
+=$e84d					IFR         = $E84D
+=$e844					T1L         = $E844
+=$e845					T1H         = $E845
+=$01					ID          = $01
+.040d					START
+.040d	a9 7d		lda #$7d	                lda     #<ADDRPROMPT
+.040f	8d 34 06	sta $0634	                sta     PRSTR_LDA+1
+.0412	a9 06		lda #$06	                lda     #>ADDRPROMPT
+.0414	8d 35 06	sta $0635	                sta     PRSTR_LDA+2
+.0417	20 31 06	jsr $0631	                jsr     PRSTR
+.041a	20 3f 06	jsr $063f	                jsr     READLINE
+.041d	c9 04		cmp #$04	                cmp     #4              ; need exactly 4 hex digits
+.041f	f0 01		beq $0422	                beq     ADDROK
+.0421	60		rts		                rts
+.0422					ADDROK
+.0422	ad 0f 0a	lda $0a0f	                lda     LINEBUF
+.0425	20 dc 04	jsr $04dc	                jsr     HEX2NIB
+.0428	0a		asl a		                asl
+.0429	0a		asl a		                asl
+.042a	0a		asl a		                asl
+.042b	0a		asl a		                asl
+.042c	8d 0b 0a	sta $0a0b	                sta     LOADAH
+.042f	ad 10 0a	lda $0a10	                lda     LINEBUF+1
+.0432	20 dc 04	jsr $04dc	                jsr     HEX2NIB
+.0435	0d 0b 0a	ora $0a0b	                ora     LOADAH
+.0438	8d 0b 0a	sta $0a0b	                sta     LOADAH
+.043b	ad 11 0a	lda $0a11	                lda     LINEBUF+2
+.043e	20 dc 04	jsr $04dc	                jsr     HEX2NIB
+.0441	0a		asl a		                asl
+.0442	0a		asl a		                asl
+.0443	0a		asl a		                asl
+.0444	0a		asl a		                asl
+.0445	8d 0a 0a	sta $0a0a	                sta     LOADAL
+.0448	ad 12 0a	lda $0a12	                lda     LINEBUF+3
+.044b	20 dc 04	jsr $04dc	                jsr     HEX2NIB
+.044e	0d 0a 0a	ora $0a0a	                ora     LOADAL
+.0451	8d 0a 0a	sta $0a0a	                sta     LOADAL
+.0454	a9 90		lda #$90	                lda     #<FNPROMPT
+.0456	8d 34 06	sta $0634	                sta     PRSTR_LDA+1
+.0459	a9 06		lda #$06	                lda     #>FNPROMPT
+.045b	8d 35 06	sta $0635	                sta     PRSTR_LDA+2
+.045e	20 31 06	jsr $0631	                jsr     PRSTR
+.0461	20 3f 06	jsr $063f	                jsr     READLINE
+.0464	8d 0e 0a	sta $0a0e	                sta     FNAMELEN
+.0467	d0 01		bne $046a	                bne     FNAMEOK
+.0469	60		rts		                rts
+.046a					FNAMEOK
+.046a	ad 0e 0a	lda $0a0e	                lda     FNAMELEN
+.046d	85 d1		sta $d1		                sta     FNLEN_ZP
+.046f	a9 0f		lda #$0f	                lda     #<LINEBUF
+.0471	85 da		sta $da		                sta     FILENAME_PTR
+.0473	a9 0a		lda #$0a	                lda     #>LINEBUF
+.0475	85 db		sta $db		                sta     FILENAME_PTR+1
+.0477	a9 08		lda #$08	                lda     #8
+.0479	85 d4		sta $d4		                sta     DEVNUM
+.047b	a9 00		lda #$00	                lda     #0
+.047d	85 9d		sta $9d		                sta     LFFLAG          ; load (not verify)
+.047f	85 96		sta $96		                sta     ST_ZP           ; clear status
+.0481	a9 00		lda #$00	                lda     #<BUFFER
+.0483	85 fb		sta $fb		                sta     IOSTART
+.0485	a9 40		lda #$40	                lda     #>BUFFER
+.0487	85 fc		sta $fc		                sta     IOSTART+1
+.0489	a9 60		lda #$60	                lda     #$60
+.048b	85 d3		sta $d3		                sta     $D3
+.048d	20 a5 f4	jsr $f4a5	                jsr     SEND_NAME       ; send OPEN + name + UNLISTEN
+.0490	20 d2 f0	jsr $f0d2	                jsr     SEND_TALK       ; tell drive to TALK
+.0493	a5 d3		lda $d3		                lda     $D3
+.0495	20 93 f1	jsr $f193	                jsr     SEND_SECOND     ; send secondary address
+.0498	20 c0 f1	jsr $f1c0	                jsr     GET_BYTE        ; first byte from file
+.049b	48		pha		                pha
+.049c	a5 96		lda $96		                lda     ST_ZP           ; check ST after first read:
+.049e	4a		lsr a		                lsr                     ;   bit 1 = timeout/no file
+.049f	4a		lsr a		                lsr
+.04a0	b0 2b		bcs $04cd	                bcs     LOADERR
+.04a2	68		pla		                pla
+.04a3	20 d1 04	jsr $04d1	                jsr     STBUF           ; store first byte, advance
+.04a6	20 c0 f1	jsr $f1c0	                jsr     GET_BYTE        ; second byte
+.04a9	20 d1 04	jsr $04d1	                jsr     STBUF
+.04ac	20 91 f3	jsr $f391	                jsr     REJOIN_LOAD     ; soak up rest of file into ($FB)
+.04af	a5 fb		lda $fb		                lda     IOSTART
+.04b1	8d 0c 0a	sta $0a0c	                sta     ENDAL
+.04b4	a5 fc		lda $fc		                lda     IOSTART+1
+.04b6	8d 0d 0a	sta $0a0d	                sta     ENDAH
+.04b9	78		sei		                sei                     ; requires cycle-exact timing for transmit
+.04ba	ad 4b e8	lda $e84b	                lda     ACR             ; T1 free-running, SR off
+.04bd	29 63		and #$63	                and     #%01100011
+.04bf	09 40		ora #$40	                ora     #%01000000
+.04c1	8d 4b e8	sta $e84b	                sta     ACR
+.04c4	a9 00		lda #$00	                lda     #$00
+.04c6	8d 4e e8	sta $e84e	                sta     IER             ; disable VIA interrupts
+.04c9	20 e7 04	jsr $04e7	                jsr     DUMPT
+.04cc	60		rts		EXIT            rts                     ; back to BASIC
+.04cd	68		pla		LOADERR         pla
+.04ce	4c c1 f3	jmp $f3c1	                jmp     ABORT_FNF
+.04d1	a0 00		ldy #$00	STBUF           ldy     #0
+.04d3	91 fb		sta ($fb),y	                sta     (IOSTART),y
+.04d5	e6 fb		inc $fb		                inc     IOSTART
+.04d7	d0 02		bne $04db	                bne     STBUF1
+.04d9	e6 fc		inc $fc		                inc     IOSTART+1
+.04db	60		rts		STBUF1          rts
+.04dc	38		sec		HEX2NIB         sec
+.04dd	e9 30		sbc #$30	                sbc     #$30            ; subtract '0'
+.04df	c9 0a		cmp #$0a	                cmp     #$0A
+.04e1	90 03		bcc $04e6	                bcc     HEX2N1          ; was a digit, done
+.04e3	38		sec		                sec
+.04e4	e9 07		sbc #$07	                sbc     #$07            ; was a letter, additional adjustment
+.04e6	60		rts		HEX2N1          rts
+.04e7	a9 ad		lda #$ad	DUMPT           lda     #$AD            ; Load absolute inst
+.04e9	8d 05 0a	sta $0a05	                sta     VEB
+.04ec	20 46 05	jsr $0546	                jsr     INTVEB
+.04ef	a2 64		ldx #$64	                ldx     #100
+.04f1	a9 16		lda #$16	DUMPT1          lda     #$16            ; sync chars
+.04f3	20 95 05	jsr $0595	                jsr     OUTCHT
+.04f6	ca		dex		                dex
+.04f7	d0 f8		bne $04f1	                bne     DUMPT1
+.04f9	a9 2a		lda #$2a	                lda     #$2A            ; start char
+.04fb	20 95 05	jsr $0595	                jsr     OUTCHT
+.04fe	a9 01		lda #$01	                lda     #ID             ; tape ID byte
+.0500	20 7c 05	jsr $057c	                jsr     OUTBT
+.0503	ad 0a 0a	lda $0a0a	                lda     LOADAL          ; destination address
+.0506	20 79 05	jsr $0579	                jsr     OUTBTC
+.0509	ad 0b 0a	lda $0a0b	                lda     LOADAH
+.050c	20 79 05	jsr $0579	                jsr     OUTBTC
+.050f	ad 06 0a	lda $0a06	DUMPT2          lda     VEB+1
+.0512	cd 0c 0a	cmp $0a0c	                cmp     ENDAL
+.0515	ad 07 0a	lda $0a07	                lda     VEB+2
+.0518	ed 0d 0a	sbc $0a0d	                sbc     ENDAH
+.051b	90 1d		bcc $053a	                bcc     DUMPT4
+.051d	a9 2f		lda #$2f	                lda     #$2F            ; end-of-data char
+.051f	20 95 05	jsr $0595	                jsr     OUTCHT
+.0522	ad 00 0a	lda $0a00	                lda     CHKL
+.0525	20 7c 05	jsr $057c	                jsr     OUTBT
+.0528	ad 01 0a	lda $0a01	                lda     CHKH
+.052b	20 7c 05	jsr $057c	                jsr     OUTBT
+.052e	a2 02		ldx #$02	                ldx     #2
+.0530	a9 04		lda #$04	DUMPT3          lda     #4              ; EOT chars
+.0532	20 95 05	jsr $0595	                jsr     OUTCHT
+.0535	ca		dex		                dex
+.0536	d0 f8		bne $0530	                bne     DUMPT3
+.0538	58		cli		                cli
+.0539	60		rts		                rts
+.053a	20 05 0a	jsr $0a05	DUMPT4          jsr     VEB             ; LDA byte
+.053d	20 79 05	jsr $0579	                jsr     OUTBTC
+.0540	20 5e 05	jsr $055e	                jsr     INCVEB
+.0543	4c 0f 05	jmp $050f	                jmp     DUMPT2
+.0546	a9 00		lda #$00	INTVEB          lda     #<BUFFER
+.0548	8d 06 0a	sta $0a06	                sta     VEB+1
+.054b	a9 40		lda #$40	                lda     #>BUFFER
+.054d	8d 07 0a	sta $0a07	                sta     VEB+2
+.0550	a9 60		lda #$60	                lda     #$60            ; RTS
+.0552	8d 08 0a	sta $0a08	                sta     VEB+3
+.0555	a9 00		lda #$00	                lda     #0
+.0557	8d 00 0a	sta $0a00	                sta     CHKL
+.055a	8d 01 0a	sta $0a01	                sta     CHKH
+.055d	60		rts		                rts
+.055e	ee 06 0a	inc $0a06	INCVEB          inc     VEB+1
+.0561	d0 03		bne $0566	                bne     INCVE1
+.0563	ee 07 0a	inc $0a07	                inc     VEB+2
+.0566	60		rts		INCVE1          rts
+.0567	a8		tay		CHKT            tay
+.0568	18		clc		                clc
+.0569	6d 00 0a	adc $0a00	                adc     CHKL
+.056c	8d 00 0a	sta $0a00	                sta     CHKL
+.056f	ad 01 0a	lda $0a01	                lda     CHKH
+.0572	69 00		adc #$00	                adc     #0
+.0574	8d 01 0a	sta $0a01	                sta     CHKH
+.0577	98		tya		                tya
+.0578	60		rts		                rts
+.0579	20 67 05	jsr $0567	OUTBTC          jsr     CHKT
+.057c	a8		tay		OUTBT           tay
+.057d	4a		lsr a		                lsr
+.057e	4a		lsr a		                lsr
+.057f	4a		lsr a		                lsr
+.0580	4a		lsr a		                lsr
+.0581	20 8a 05	jsr $058a	                jsr     HEXOUT          ; output MSD
+.0584	98		tya		                tya
+.0585	20 8a 05	jsr $058a	                jsr     HEXOUT          ; output LSD
+.0588	98		tya		                tya
+.0589	60		rts		                rts
+.058a	29 0f		and #$0f	HEXOUT          and     #$0F
+.058c	c9 0a		cmp #$0a	                cmp     #10
+.058e	18		clc		                clc
+.058f	30 02		bmi $0593	                bmi     HEX1
+.0591	69 07		adc #$07	                adc     #7
+.0593	69 30		adc #$30	HEX1            adc     #$30
+.0595	8e 02 0a	stx $0a02	OUTCHT          stx     SAVX
+.0598	8c 03 0a	sty $0a03	                sty     SAVX+1
+.059b	a0 08		ldy #$08	                ldy     #8
+.059d	20 b9 05	jsr $05b9	CHT1            jsr     ONE
+.05a0	4a		lsr a		                lsr
+.05a1	b0 06		bcs $05a9	                bcs     CHT2
+.05a3	20 b9 05	jsr $05b9	                jsr     ONE
+.05a6	4c ac 05	jmp $05ac	                jmp     CHT3
+.05a9	20 f5 05	jsr $05f5	CHT2            jsr     ZRO
+.05ac	20 f5 05	jsr $05f5	CHT3            jsr     ZRO
+.05af	88		dey		                dey
+.05b0	d0 eb		bne $059d	                bne     CHT1
+.05b2	ae 02 0a	ldx $0a02	                ldx     SAVX
+.05b5	ac 03 0a	ldy $0a03	                ldy     SAVX+1
+.05b8	60		rts		                rts
+.05b9	a2 09		ldx #$09	ONE             ldx     #9
+.05bb	48		pha		                pha
+.05bc	a9 7e		lda #$7e	ONE1            lda     #126
+.05be	8d 44 e8	sta $e844	                sta     T1L
+.05c1	a9 00		lda #$00	                lda     #0
+.05c3	8d 45 e8	sta $e845	                sta     T1H
+.05c6	ad 4c e8	lda $e84c	                lda     PCR             ; CB2 = 1
+.05c9	09 e0		ora #$e0	                ora     #%11100000
+.05cb	8d 4c e8	sta $e84c	                sta     PCR
+.05ce	a9 40		lda #$40	                lda     #%01000000
+.05d0	2c 4d e8	bit $e84d	ONE2            bit     IFR
+.05d3	f0 fb		beq $05d0	                beq     ONE2
+.05d5	a9 7e		lda #$7e	                lda     #126
+.05d7	8d 44 e8	sta $e844	                sta     T1L
+.05da	a9 00		lda #$00	                lda     #0
+.05dc	8d 45 e8	sta $e845	                sta     T1H
+.05df	ad 4c e8	lda $e84c	                lda     PCR             ; CB2 = 0
+.05e2	09 c0		ora #$c0	                ora     #%11000000
+.05e4	29 df		and #$df	                and     #%11011111
+.05e6	8d 4c e8	sta $e84c	                sta     PCR
+.05e9	a9 40		lda #$40	                lda     #%01000000
+.05eb	2c 4d e8	bit $e84d	ONE3            bit     IFR
+.05ee	f0 fb		beq $05eb	                beq     ONE3
+.05f0	ca		dex		                dex
+.05f1	d0 c9		bne $05bc	                bne     ONE1
+.05f3	68		pla		                pla
+.05f4	60		rts		                rts
+.05f5	a2 06		ldx #$06	ZRO             ldx     #6
+.05f7	48		pha		                pha
+.05f8	a9 c3		lda #$c3	ZRO1            lda     #195
+.05fa	8d 44 e8	sta $e844	                sta     T1L
+.05fd	a9 00		lda #$00	                lda     #00
+.05ff	8d 45 e8	sta $e845	                sta     T1H
+.0602	ad 4c e8	lda $e84c	                lda     PCR
+.0605	09 e0		ora #$e0	                ora     #%11100000
+.0607	8d 4c e8	sta $e84c	                sta     PCR
+.060a	a9 40		lda #$40	                lda     #%01000000
+.060c	2c 4d e8	bit $e84d	ZRO2            bit     IFR
+.060f	f0 fb		beq $060c	                beq     ZRO2
+.0611	a9 c3		lda #$c3	                lda     #195
+.0613	8d 44 e8	sta $e844	                sta     T1L
+.0616	a9 00		lda #$00	                lda     #00
+.0618	8d 45 e8	sta $e845	                sta     T1H
+.061b	ad 4c e8	lda $e84c	                lda     PCR
+.061e	09 c0		ora #$c0	                ora     #%11000000
+.0620	29 df		and #$df	                and     #%11011111
+.0622	8d 4c e8	sta $e84c	                sta     PCR
+.0625	a9 40		lda #$40	                lda     #%01000000
+.0627	2c 4d e8	bit $e84d	ZRO3            bit     IFR
+.062a	f0 fb		beq $0627	                beq     ZRO3
+.062c	ca		dex		                dex
+.062d	d0 c9		bne $05f8	                bne     ZRO1
+.062f	68		pla		                pla
+.0630	60		rts		                rts
+.0631	a2 00		ldx #$00	PRSTR           ldx     #0
+.0633	bd ff ff	lda $ffff,x	PRSTR_LDA       lda     $FFFF,x         ; address patched at runtime
+.0636	f0 06		beq $063e	                beq     PRSTR_DONE
+.0638	20 d2 ff	jsr $ffd2	                jsr     CHROUT
+.063b	e8		inx		                inx
+.063c	d0 f5		bne $0633	                bne     PRSTR_LDA
+.063e	60		rts		PRSTR_DONE      rts
+.063f	a9 00		lda #$00	READLINE        lda     #0
+.0641	8d 02 0a	sta $0a02	                sta     SAVX            ; SAVX = char count so far
+.0644	20 e4 ff	jsr $ffe4	RDLOOP          jsr     GETIN           ; clobbers X
+.0647	c9 00		cmp #$00	                cmp     #0
+.0649	f0 f9		beq $0644	                beq     RDLOOP
+.064b	c9 0d		cmp #$0d	                cmp     #$0D
+.064d	f0 27		beq $0676	                beq     RDDONE
+.064f	c9 14		cmp #$14	                cmp     #$14
+.0651	f0 14		beq $0667	                beq     RDDEL
+.0653	ae 02 0a	ldx $0a02	                ldx     SAVX            ; reload count
+.0656	e0 10		cpx #$10	                cpx     #LINEBUFMAX
+.0658	b0 ea		bcs $0644	                bcs     RDLOOP          ; buffer full, ignore char
+.065a	9d 0f 0a	sta $0a0f,x	                sta     LINEBUF,x
+.065d	e8		inx		                inx
+.065e	8e 02 0a	stx $0a02	                stx     SAVX            ; save updated count
+.0661	20 d2 ff	jsr $ffd2	                jsr     CHROUT          ; clobbers X (we don't care now)
+.0664	4c 44 06	jmp $0644	                jmp     RDLOOP
+.0667	ae 02 0a	ldx $0a02	RDDEL           ldx     SAVX            ; A still = $14 from CMP
+.066a	f0 d8		beq $0644	                beq     RDLOOP          ; nothing to delete
+.066c	ca		dex		                dex
+.066d	8e 02 0a	stx $0a02	                stx     SAVX
+.0670	20 d2 ff	jsr $ffd2	                jsr     CHROUT          ; echo DEL (cursor back)
+.0673	4c 44 06	jmp $0644	                jmp     RDLOOP
+.0676	20 d2 ff	jsr $ffd2	RDDONE          jsr     CHROUT          ; echo CR (A still = $0D)
+.0679	ad 02 0a	lda $0a02	                lda     SAVX            ; return count
+.067c	60		rts		                rts
+>067d	4b 49 4d 20 41 44 44 52		ADDRPROMPT      .text   "KIM ADDR (4 HEX): "
+>0685	20 28 34 20 48 45 58 29 3a 20
+>068f	00				                .byte   $00
+>0690	46 49 4c 45 4e 41 4d 45		FNPROMPT        .text   "FILENAME: "
+>0698	3a 20
+>069a	00				                .byte   $00
+
+;******  End of listing
